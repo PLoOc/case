@@ -6,8 +6,8 @@ import (
 	"log"
 	"sync"
 
-	"github.com/seu-usuario/processor/internal/domain"
-	"github.com/seu-usuario/processor/internal/infra/queue"
+	"github.com/PLoOc/case/processor/internal/domain"
+	"github.com/PLoOc/case/processor/internal/infra/queue"
 )
 
 type WorkerPool struct {

@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/seu-usuario/processor/internal/infra/queue"
-	"github.com/seu-usuario/processor/internal/infra/worker"
+	"github.com/PLoOc/case/processor/internal/infra/queue"
+	"github.com/PLoOc/case/processor/internal/infra/worker"
 )
 
 func main() {
