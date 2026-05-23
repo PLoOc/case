@@ -6,6 +6,7 @@ import (
 	"log"
 	"sync"
 
+	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/PLoOc/case/processor/internal/domain"
 	"github.com/PLoOc/case/processor/internal/infra/queue"
 )
@@ -59,14 +60,14 @@ func (wp *WorkerPool) worker(ctx context.Context, id int) {
 	}
 }
 
-func (wp *WorkerPool) processMessage(ctx context.Context, msg interface{}) {
-	// Parse da mensagem
+func (wp *WorkerPool) processMessage(ctx context.Context, msg types.Message) {
+
 	var rawEvent domain.RawEvent
-	msgBody := msg.(string) // Simplificado - você precisa extrair corretamente da struct
 	
-	err := json.Unmarshal([]byte(msgBody), &rawEvent)
+	err := json.Unmarshal([]byte(*msg.Body), &rawEvent)
 	if err != nil {
 		log.Printf("Erro ao fazer parse do evento: %v\n", err)
+		wp.sqs.DeleteMessage(ctx, *msg.ReceiptHandle)
 		return
 	}
 
@@ -74,7 +75,7 @@ func (wp *WorkerPool) processMessage(ctx context.Context, msg interface{}) {
 	processed, err := rawEvent.ValidateAndConvert(wp.processorID)
 	if err != nil {
 		log.Printf("Evento inválido [%s]: %v\n", rawEvent.EventID, err)
-		// Aqui a mensagem seria enviada para DLQ após 3 tentativas
+		//3 tentativas de reprocessamento
 		return
 	}
 
@@ -85,5 +86,6 @@ func (wp *WorkerPool) processMessage(ctx context.Context, msg interface{}) {
 		return
 	}
 
+	wp.sqs.DeleteMessage(ctx, *msg.ReceiptHandle)
 	log.Printf("Evento processado com sucesso: %s\n", rawEvent.EventID)
 }

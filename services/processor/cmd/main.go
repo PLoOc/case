@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 	"strconv"
-	"time"
 
 	"github.com/PLoOc/case/processor/internal/infra/queue"
 	"github.com/PLoOc/case/processor/internal/infra/worker"
@@ -38,18 +37,16 @@ func main() {
 		workerCount = 3
 	}
 
-	log.Println("🚀 Processor iniciando...")
+	log.Println("PROCESSOR INICIANDO...")
 	log.Printf("  Endpoint: %s\n", endpoint)
 	log.Printf("  Workers: %d\n", workerCount)
 
-	// Conectar ao SQS
 	sqs, err := queue.NewSQSAdapter(ctx, endpoint, region, rawQueue, processedQueue)
 	if err != nil {
 		log.Fatalf("Erro ao conectar ao SQS: %v", err)
 	}
 	defer sqs.Close()
 
-	// Iniciar worker pool
 	pool := worker.NewWorkerPool(sqs, workerCount, "processor-1")
 	pool.Start(ctx)
 }

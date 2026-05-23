@@ -3,20 +3,25 @@ package queue
 import (
 	"context"
 	"encoding/json"
+	"net/url"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
-	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
-	"log"
 )
 
 type SQSAdapter struct {
-	client             *sqs.Client
-	rawEventsQueueURL  string
+	client                  *sqs.Client
+	rawEventsQueueURL       string
 	processedEventsQueueURL string
 }
 
 func NewSQSAdapter(ctx context.Context, endpoint, region, rawQueue, processedQueue string) (*SQSAdapter, error) {
+	u, err := url.Parse(endpoint)
+	if err != nil {
+		return nil, err
+	}
+
 	cfg, err := config.LoadDefaultConfig(ctx,
 		config.WithRegion(region),
 	)
@@ -25,10 +30,10 @@ func NewSQSAdapter(ctx context.Context, endpoint, region, rawQueue, processedQue
 	}
 
 	client := sqs.NewFromConfig(cfg, func(o *sqs.Options) {
-		o.BaseEndpoint = aws.String(endpoint)
+		o.BaseEndpoint = aws.String(u.String())
+		o.EndpointOptions.DisableHTTPS = true
 	})
 
-	// Obter URL da fila raw-events
 	rawResp, err := client.GetQueueUrl(ctx, &sqs.GetQueueUrlInput{
 		QueueName: aws.String(rawQueue),
 	})
@@ -36,7 +41,6 @@ func NewSQSAdapter(ctx context.Context, endpoint, region, rawQueue, processedQue
 		return nil, err
 	}
 
-	// Obter URL da fila processed-events
 	procResp, err := client.GetQueueUrl(ctx, &sqs.GetQueueUrlInput{
 		QueueName: aws.String(processedQueue),
 	})
@@ -45,8 +49,8 @@ func NewSQSAdapter(ctx context.Context, endpoint, region, rawQueue, processedQue
 	}
 
 	return &SQSAdapter{
-		client:              client,
-		rawEventsQueueURL:   *rawResp.QueueUrl,
+		client:                  client,
+		rawEventsQueueURL:       *rawResp.QueueUrl,
 		processedEventsQueueURL: *procResp.QueueUrl,
 	}, nil
 }
@@ -54,7 +58,7 @@ func NewSQSAdapter(ctx context.Context, endpoint, region, rawQueue, processedQue
 func (s *SQSAdapter) ReceiveMessage(ctx context.Context) (*sqs.ReceiveMessageOutput, error) {
 	return s.client.ReceiveMessage(ctx, &sqs.ReceiveMessageInput{
 		QueueUrl:            aws.String(s.rawEventsQueueURL),
-		MaxNumberOfMessages: types.Int32(10),
+		MaxNumberOfMessages: 10,
 		WaitTimeSeconds:     10,
 	})
 }
@@ -72,7 +76,6 @@ func (s *SQSAdapter) SendProcessedEvent(ctx context.Context, event interface{}) 
 	if err != nil {
 		return err
 	}
-
 	_, err = s.client.SendMessage(ctx, &sqs.SendMessageInput{
 		QueueUrl:    aws.String(s.processedEventsQueueURL),
 		MessageBody: aws.String(string(body)),
@@ -81,5 +84,5 @@ func (s *SQSAdapter) SendProcessedEvent(ctx context.Context, event interface{}) 
 }
 
 func (s *SQSAdapter) Close() error {
-	return nil // SQS não precisa de close explícito
+	return nil
 }

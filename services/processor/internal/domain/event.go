@@ -3,6 +3,7 @@ package domain
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"time"
 )
 
@@ -32,6 +33,12 @@ func (e *RawEvent) ValidateAndConvert(processorID string) (*ProcessedEvent, erro
 	if e.EventID == "" {
 		return nil, errors.New("event_id é obrigatório")
 	}
+
+	var uuidRegex = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+
+	if !uuidRegex.MatchString(e.EventID) {
+    	return nil, errors.New("event_id deve ser um UUID válido")
+}
 
 	// Validar developer_id
 	if e.DeveloperID == "" {

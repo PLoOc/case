@@ -94,9 +94,7 @@ func (r *DynamoDBRepository) UpdateSummary(ctx context.Context, event *domain.Ev
 		summary.TotalPullRequests += event.Value
 	case "review_time_minutes":
 		summary.TotalReviewTime += event.Value
-		if summary.EventsProcessed > 0 {
-			summary.AvgReviewTime = float64(summary.TotalReviewTime) / float64(summary.EventsProcessed)
-		}
+		summary.AvgReviewTime = float64(summary.TotalReviewTime) / float64(summary.EventsProcessed)
 	default:
 		return fmt.Errorf("metric_type desconhecido: %s", event.MetricType)
 	}
